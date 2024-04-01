@@ -86,7 +86,7 @@ let
 
   overrideNameserversScript = pkgs.writeScript "02overridedns" ''
     #!/bin/sh
-    PATH=${with pkgs; makeBinPath [ gnused gnugrep coreutils ]}
+    PATH=${makeBinPath [ pkgs.gnused pkgs.gnugrep pkgs.coreutils ]}
     tmp=$(mktemp)
     sed '/nameserver /d' /etc/resolv.conf > $tmp
     grep 'nameserver ' /etc/resolv.conf | \
@@ -132,9 +132,12 @@ let
     '';
   };
 
+  nmPackage = cfg.package;
+  mmPackage = cfg.modemmanager.package;
+
   packages = [
-    pkgs.modemmanager
-    pkgs.networkmanager
+    mmPackage
+    nmPackage
   ]
   ++ cfg.plugins
   ++ lib.optionals (!delegateWireless && !enableIwd) [
@@ -165,6 +168,10 @@ in
           to change network settings to this group.
         '';
       };
+
+      package = mkPackageOption pkgs "networkmanager" { };
+
+      modemmanager.package = mkPackageOption pkgs "modemmanager" { };
 
       connectionConfig = mkOption {
         type = with types; attrsOf (nullOr (oneOf [
@@ -415,7 +422,7 @@ in
               };
             };
           });
-          apply = (lib.filterAttrsRecursive (n: v: v != { }));
+          apply = lib.filterAttrsRecursive (n: v: v != { });
           default = { };
           example = {
             home-wifi = {
@@ -610,7 +617,7 @@ in
           ${pkgs.envsubst}/bin/envsubst -i ${ini.generate (lib.escapeShellArg profile.n) profile.v} > ${path (lib.escapeShellArg profile.n)}
         '') (lib.mapAttrsToList (n: v: { inherit n v; }) cfg.ensureProfiles.profiles)
       + ''
-        ${pkgs.networkmanager}/bin/nmcli connection reload
+        ${nmPackage}/bin/nmcli connection reload
       '';
       serviceConfig = {
         EnvironmentFile = cfg.ensureProfiles.environmentFiles;
@@ -626,14 +633,14 @@ in
       })
 
       {
-        networkmanager.plugins = with pkgs; [
-          networkmanager-fortisslvpn
-          networkmanager-iodine
-          networkmanager-l2tp
-          networkmanager-openconnect
-          networkmanager-openvpn
-          networkmanager-vpnc
-          networkmanager-sstp
+        networkmanager.plugins = [
+          pkgs.networkmanager-fortisslvpn
+          pkgs.networkmanager-iodine
+          pkgs.networkmanager-l2tp
+          pkgs.networkmanager-openconnect
+          pkgs.networkmanager-openvpn
+          pkgs.networkmanager-vpnc
+          pkgs.networkmanager-sstp
         ];
       }
 
